@@ -153,6 +153,16 @@
   .sign input{text-align:center;}
   .sign input.namefld{display:inline-block;width:14ch;min-width:6ch;max-width:95%;text-align:center;}
   .sign .role{margin-top:2px;}
+  .sign .role select.rolesel{
+    border:0;background:transparent;font:inherit;font-size:inherit;font-weight:bold;
+    color:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;
+    border-bottom:1.5px dashed #9bb4d4;padding:0 14px 1px 0;
+    text-align:center;text-align-last:center;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239bb4d4'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 1px center;background-size:8px;
+  }
+  .sign .role select.rolesel:focus{outline:none;border-color:#1b4fa0;color:#1b4fa0;}
+  @media print{.sign .role select.rolesel{border-bottom:0;background-image:none;padding:0;-webkit-appearance:none;appearance:none;}}
 
   .footer{margin-top:4px;text-align:center;font-size:8px;line-height:1.25;border-top:1px solid #ccc;padding-top:3px;}
   .footer.p1foot{font-size:7pt;line-height:1.15;margin-top:2px;padding-top:2px;}
@@ -400,13 +410,19 @@
       <div>
         <div>INSPECTED BY</div>
         <div class="line">(<input id="f_insp_name" class="namefld">)</div>
-        <div class="role">INSPECTION PERFORMER</div>
+        <div class="role"><select id="f_insp_role" class="rolesel">
+          <option value="INSPECTION PERFORMER">INSPECTION PERFORMER</option>
+          <option value="AUTHORIZED INSPECTOR">AUTHORIZED INSPECTOR</option>
+        </select></div>
         <input id="f_insp_date" style="width:55%;margin-top:4px" placeholder="DD / MM / YYYY">
       </div>
       <div>
         <div>APPROVED BY</div>
         <div class="line">(<input id="f_appr_name" class="namefld">)</div>
-        <div class="role">MANAGER</div>
+        <div class="role"><select id="f_appr_role" class="rolesel">
+          <option value="MANAGER">MANAGER</option>
+          <option value="AUTHORIZED INSPECTOR">AUTHORIZED INSPECTOR</option>
+        </select></div>
         <input id="f_appr_date" style="width:55%;margin-top:4px" placeholder="DD / MM / YYYY">
       </div>
     </div>
@@ -526,7 +542,7 @@
   var FIELDS=["f_shipmaster","f_year","f_month","f_date","f_vessel","f_imo","f_refcert","f_place","f_flag","f_class",
     "f_manufacturer","f_manufacture_date","f_protection_space",
     "f_workshop","f_workshop_place",
-    "f_insp_name","f_insp_date","f_appr_name","f_appr_date"];
+    "f_insp_name","f_insp_role","f_insp_date","f_appr_name","f_appr_role","f_appr_date"];
   var KEY="watermist_cert_data";
   var saveTimer=null;
 
