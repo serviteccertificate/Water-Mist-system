@@ -279,7 +279,7 @@
   <button class="btn" onclick="setPreview(true)">👁️ พรีวิว / รีวิวฟอร์ม</button>
   <button class="btn grey" onclick="exportData()">⬇️ บันทึกข้อมูล</button>
   <button class="btn grey" onclick="document.getElementById('imp').click()">⬆️ โหลดข้อมูล</button>
-  <input id="imp" type="file" accept="application/json" style="display:none" onchange="importData(event)">
+  <input id="imp" type="file" accept=".json,application/json,text/plain,application/octet-stream" style="display:none" onchange="importData(event)">
   <button class="btn amber" onclick="resetAll()">♻️ ล้างฟอร์ม</button>
   <span id="autoStatus" class="autostatus"></span>
 </div>
@@ -287,6 +287,7 @@
 
 <div class="cloudbar no-print">
   <button class="btn green" onclick="saveCloud()">☁️ บันทึก / อัปเดต</button>
+  <button class="btn" style="background:#06C755" onclick="sendLine()">📲 ส่ง LINE เข้ากลุ่ม</button>
   <button class="btn" onclick="listCloud()">📋 รายการทั้งหมด</button>
   <button class="btn grey" onclick="newCert()">➕ ใบรับรองใหม่</button>
   <button class="btn grey" onclick="toggleCloudCfg()">⚙️ ตั้งค่า</button>
@@ -320,8 +321,27 @@
 <div class="hint no-print">
   กรอกข้อมูลในช่องสีฟ้าได้เลย → กดปุ่ม <b>"สร้าง / พิมพ์ PDF"</b> แล้วเลือก <b>Save as PDF</b> เพื่อบันทึกใบรับรอง · คลิกที่ช่องสี่เหลี่ยม ☐ เพื่อติ๊กถูก ·
   ข้อมูลจะถูกบันทึกอัตโนมัติในเครื่อง และ Export เป็นไฟล์ไว้ใช้ครั้งหน้าได้ · รูปแบบหน้ากระดาษตรงกับต้นฉบับ FR-SE-38 Rev.05 ทุกประการ<br>
-  <b>✏️ iPad + Apple Pencil:</b> เปิด <b>Settings → Apple Pencil → Scribble</b> แล้วเขียนด้วยปากกาลงในช่องได้เลย · ติ๊ก "โหมดเขียน" เพื่อขยายช่อง (ใช้ตอนกรอกเท่านั้น ไม่กระทบตอนพิมพ์)
+  <b>✏️ iPad + Apple Pencil:</b> เปิด <b>Settings → Apple Pencil → Scribble</b> แล้วเขียนด้วยปากกาลงในช่องได้เลย · ติ๊ก "โหมดเขียน" เพื่อขยายช่อง (ใช้ตอนกรอกเท่านั้น ไม่กระทบตอนพิมพ์)<br>
+  <b>🔗 ลิงก์ Google Sheet (Apps Script):</b> ถ้ายังไม่ได้ตั้งค่า ให้กด <b>⚙️ ตั้งค่า</b> แล้ววางลิงก์นี้ ·
+  <span id="gasNote" style="font-family:monospace;font-size:11.5px;word-break:break-all;background:#fff;border:1px solid #f0c48a;border-radius:4px;padding:1px 5px;user-select:all;-webkit-user-select:all">https://script.google.com/macros/s/AKfycbwxUr9lHGqQOteJEXcAew1_Wfljk2wonlvaKEXMXJeaBq3ftEam_PF6XgmSoyUPeJIv/exec</span>
+  <button type="button" onclick="copyGasNote(this)" style="font-size:11.5px;padding:2px 8px;margin-left:4px;border:0;border-radius:4px;background:#1d4ed8;color:#fff;cursor:pointer">📋 คัดลอก</button>
 </div>
+<script>
+  /* คัดลอกลิงก์ Apps Script — ใช้ได้ทั้ง iPad / Samsung / คอมพิวเตอร์ */
+  function copyGasNote(btn){
+    var t=document.getElementById('gasNote').textContent.trim();
+    function done(){var o=btn.textContent;btn.textContent='✅ คัดลอกแล้ว';setTimeout(function(){btn.textContent=o;},1800);}
+    function fallback(){
+      var ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');
+      ta.style.cssText='position:fixed;top:0;left:0;opacity:0;font-size:16px';
+      document.body.appendChild(ta);ta.focus();ta.select();ta.setSelectionRange(0,t.length);
+      var ok=false;try{ok=document.execCommand('copy');}catch(e){}
+      ta.remove();
+      if(ok)done();else prompt('กดค้างที่ลิงก์เพื่อคัดลอก:',t);
+    }
+    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(done,fallback);}else{fallback();}
+  }
+</script>
 
 <div class="sheet" id="sheet">
 
@@ -637,16 +657,111 @@
   }
 
   async function exportData(){
-    var name=(document.getElementById('f_refcert').value||'WaterMist_certificate').replace(/[^\w\-]+/g,'_')+'.json';
+    var ua=navigator.userAgent||'';
+    var isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1); // iPadOS แสดงตัวเป็น Mac
+    var isAndroid=/Android/i.test(ua);
+    var now=new Date(),pad=function(n){return (n<10?'0':'')+n;};
+    var stamp=now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'-'+pad(now.getHours())+pad(now.getMinutes());
+    var base=(document.getElementById('f_refcert').value||'WaterMist_certificate').replace(/[^\w\-]+/g,'_').replace(/^_+|_+$/g,'');
+    var name=base+'_'+stamp+'.json';
     var text=JSON.stringify(collect(),null,2);
     var blob=new Blob([text],{type:'application/json'});
-    try{
-      var file=new File([blob],name,{type:'application/json'});
-      if(navigator.canShare && navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}
-    }catch(e){ if(e&&e.name==='AbortError')return; }
+
+    // iPad / iPhone: เปิด Share Sheet → เลือก "บันทึกไปยังไฟล์" (Save to Files)
+    if(isIOS){
+      try{
+        var file=new File([blob],name,{type:'application/json'});
+        if(navigator.canShare && navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});autoStatus('✅ บันทึกไฟล์ '+name);return;}
+      }catch(e){ if(e&&e.name==='AbortError')return; }
+    }
+
+    // Samsung / Android และคอมพิวเตอร์: ดาวน์โหลดลงโฟลเดอร์ Download
     var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
-    setTimeout(function(){URL.revokeObjectURL(url);},1500);
+    var a=document.createElement('a');a.href=url;a.download=name;a.rel='noopener';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},60000);   // Samsung Internet ดึงไฟล์ช้า — ถ้าปล่อยเร็วไฟล์จะว่าง/ดาวน์โหลดล้มเหลว
+    autoStatus('✅ บันทึกแล้ว: '+name);
+    if(isAndroid){
+      setTimeout(function(){
+        alert('✅ บันทึกไฟล์แล้ว\n\n'+name+'\n\n'+
+          'หาไฟล์ได้ที่:\nแอป "ไฟล์ของฉัน" (My Files) → ดาวน์โหลด (Downloads)\n\n'+
+          'หรือในเบราว์เซอร์: เมนู ☰/⋮ → ดาวน์โหลด (Downloads)\n\n'+
+          'เปิดกลับมาใช้: กดปุ่ม "⬆️ โหลดข้อมูล" แล้วเลือกไฟล์นี้');
+      },600);
+    }
+  }
+  /* ---- ส่ง LINE เข้ากลุ่ม (หลักการเดียวกับ cert ใบอื่นทั้งหมด) ---- */
+  /* เปิดแอป LINE พร้อมข้อความสรุปใบรับรอง ผู้ใช้เลือกกลุ่ม/แชทปลายทางเองแล้วกดส่ง ไม่ต้องตั้งค่า Token หรือ Group ID */
+  function sendLine(){
+    function v(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
+    var vessel=v('f_vessel')||'-';
+    var refcert=v('f_refcert')||'-';
+    var imo=v('f_imo');
+    var d=v('f_date'),m=v('f_month'),y=v('f_year');
+    var dateStr=[d,m,y].filter(Boolean).join('/')||'-';
+    var place=v('f_place');
+    var maker=v('f_manufacturer');
+    var space=v('f_protection_space');
+    // สรุปผล checklist: นับจำนวนข้อที่ติ๊กในแต่ละช่อง
+    var cnt={carried:0,notcarried:0,notapp:0};
+    document.querySelectorAll('#checklistBody .chk-cell-input').forEach(function(el){
+      if((el.value||'').trim())cnt[el.getAttribute('data-col')]++;
+    });
+    var total=CHECKLIST.length;
+
+    var msg='📋 CERTIFICATE OF FIXED WATER MIST SYSTEM\n'
+      +'🏢 Marine Servitec Co., Ltd. — FR-SE-38\n'
+      +'──────────────────────\n'
+      +'🚢 เรือ: '+vessel+'\n'
+      +(imo?('🆔 IMO: '+imo+'\n'):'')
+      +'📄 เลขที่ใบรับรอง: '+refcert+'\n'
+      +'📅 วันที่: '+dateStr+'\n'
+      +(place?('📍 สถานที่: '+place+'\n'):'')
+      +(maker?('🏭 ผู้ผลิต: '+maker+'\n'):'')
+      +(space?('🛡️ พื้นที่ป้องกัน: '+space+'\n'):'')
+      +'✅ ตรวจ/ทดสอบแล้ว (Carried out): '+cnt.carried+' / '+total+' ข้อ\n'
+      +(cnt.notcarried?('⚠️ ยังไม่ได้ทำ (Not carried out): '+cnt.notcarried+' ข้อ\n'):'')
+      +(cnt.notapp?('➖ ไม่เกี่ยวข้อง (N/A): '+cnt.notapp+' ข้อ\n'):'')
+      +'──────────────────────\n'
+      +'ส่งจากระบบ Water Mist Certificate Generator';
+
+    var enc=encodeURIComponent(msg);
+    var webUrl='https://line.me/R/msg/text/?'+enc;          // สำรอง: เปิดผ่านเว็บ (ใช้เมื่อไม่มีแอป LINE)
+    var ua=navigator.userAgent||'';
+    var isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1); // iPadOS แสดงตัวเป็น Mac
+    var isAndroid=/Android/i.test(ua);
+
+    if(isAndroid||isIOS){
+      try{saveStore();}catch(e){}   // บันทึกฟอร์มลงเครื่องก่อน (ทำทันที) กลับมาจาก LINE ข้อมูลยังอยู่ครบ
+    }
+
+    if(isAndroid){
+      // Samsung / Android: สั่งเปิดแอป LINE โดยตรงด้วย intent (ไม่ผ่านหน้าเว็บ ไม่ต้องล็อกอิน)
+      // ถ้าเครื่องไม่มีแอป LINE → เบราว์เซอร์จะไปที่ webUrl ให้อัตโนมัติ
+      location.href='intent://msg/text/?'+enc+
+        '#Intent;scheme=line;package=jp.naver.line.android;'+
+        'S.browser_fallback_url='+encodeURIComponent(webUrl)+';end';
+      return;
+    }
+
+    if(isIOS){
+      // iPad / iPhone: เปิดแอป LINE โดยตรงด้วย line:// (ไม่ผ่านหน้าเว็บ ไม่ต้องล็อกอิน)
+      var left=false;
+      function onHide(){ if(document.hidden) left=true; }
+      document.addEventListener('visibilitychange',onHide);
+      window.addEventListener('pagehide',function(){left=true;},{once:true});
+      location.href='line://msg/text/?'+enc;
+      // ถ้า 2 วินาทีแล้วยังไม่ได้สลับไปแอป (ไม่มีแอป LINE) → เปิดผ่านเว็บแทน
+      setTimeout(function(){
+        document.removeEventListener('visibilitychange',onHide);
+        if(!left && !document.hidden) location.href=webUrl;
+      },2000);
+      return;
+    }
+
+    // คอมพิวเตอร์: เปิดแท็บใหม่ (LINE เว็บ / LINE PC)
+    var w=window.open(webUrl,'_blank');
+    if(!w)location.href=webUrl;
   }
   function importData(ev){
     var file=ev.target.files[0];if(!file)return;
